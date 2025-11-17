@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Test technique Frontend - MapBrain
 
-## Getting Started
+Cette application a été créée avec Next.js 15 (App Router) et Tailwind CSS.
 
-First, run the development server:
+## Lancement de l'application
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Pour lancer l'application en local, suivez ces étapes :
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1.  Installez les dépendances :
+    ```bash
+    npm install
+    # or
+    pnpm install
+    ```
+2.  Lancez le serveur de développement :
+    `bash
+    npm run dev
+    # or
+    pnpm dev
+    `
+    Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Gestion du rendu (ISR - Incremental Static Regeneration & SSG - Static Site Generation)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+J'ai opté pour une stratégie de rendu mixte :
 
-## Learn More
+- **Page liste des posts (`/posts`) : ISR (Incremental Static Regeneration)**
 
-To learn more about Next.js, take a look at the following resources:
+  - **Pourquoi ISR ?** Les données des posts ne changent pas très fréquemment. Il est donc inutile de les re-fetcher à chaque requête (SSR). Le SSG (Static Site Generation) simple n'est pas idéal non plus, car on veut pouvoir mettre à jour la liste sans avoir à redéployer toute l'application.
+  - **Implémentation :** J'utilise l'option `{ next: { tags: ['posts'] } }` dans l'appel `fetch` pour la liste des posts. Cela permet à Next.js de mettre en cache les données et de les servir de manière statique, tout en permettant une revalidation manuelle.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Page de détail d'un post (`/posts/[id]`) : SSG (Static Site Generation) ou cache indéfini**
+  - **Pourquoi SSG/Cache indéfini ?** Les données d'un post individuel, une fois publiées, sont généralement immuables. Une revalidation fréquente n'est pas nécessaire. En retirant l'option `next: { tags: ['posts'] }` de l'appel `fetch` pour les posts individuels, Next.js mettra en cache ces pages indéfiniment après la première requête ou les générera statiquement si elles sont pré-rendues. Cela optimise les performances en évitant des re-fetches inutiles.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Rafraîchissement du cache
 
-## Deploy on Vercel
+Le rafraîchissement du cache est géré de deux manières :
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1.  **Revalidation manuelle :** Un bouton "Rafraîchir la liste" sur la page `/posts` permet de déclencher une revalidation manuelle. Ce bouton appelle une "Server Action" (`revalidatePosts`) qui utilise la fonction `revalidateTag('posts')` de Next.js pour invalider le cache des données taguées avec `posts`.
+2.  **Revalidation temporelle (non implémentée) :** On pourrait également ajouter une revalidation basée sur le temps en ajoutant `revalidate: 3600` (par exemple, pour une heure) dans les options de `fetch`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Améliorations possibles
+
+Avec plus de temps, voici quelques améliorations que j'aurais pu apporter :
+
+- **Pagination :** Pour la liste des posts, une pagination côté serveur serait plus performante que de charger tous les posts en une seule fois.
+- **Tests :** Ajouter des tests unitaires et d'intégration pour garantir la robustesse de l'application.
+- **Design et UX :** Améliorer le design général et l'expérience utilisateur, par exemple en ajoutant des transitions plus fluides ou des animations.
